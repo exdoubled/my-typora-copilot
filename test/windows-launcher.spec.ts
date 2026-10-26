@@ -157,12 +157,15 @@ if ($env:COPILOT_TEST_MODE -in @('denied', 'cancelled')) {
       readFileSync(path.join(home, "plugin", "language-server", "language-server.cjs"), "utf8"),
     ).toBe("server payload");
     expect(existsSync(path.join(directory, "launcher.lnk"))).toBe(true);
+    const shortcut = readFileSync(path.join(directory, "launcher.lnk"));
+    expect(
+      shortcut.includes(Buffer.from(path.join(home, "bin", "launch_windows.ps1"), "utf16le")),
+    ).toBe(true);
+    expect(shortcut.includes(Buffer.from(path.join(typora, "Typora.exe"), "utf16le"))).toBe(true);
     expect(readFileSync(path.join(home, "plugin", "package.json"), "utf8")).toBe(
       '{"type":"module"}',
     );
     check(`
-$shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut("$env:COPILOT_TEST_ROOT\\launcher.lnk")
-if ($shortcut.Arguments -notlike '*launch_windows.ps1*') { throw 'Wrong shortcut target' }
 $command = (Get-Item -LiteralPath "$env:COPILOT_TEST_REGISTRY\\TyporaCopilot.Markdown\\shell\\open\\command").GetValue('')
 if (-not $command.EndsWith('"%1"')) { throw 'Missing document argument' }
 if ((Get-Item -LiteralPath "$env:COPILOT_TEST_REGISTRY\\.md\\OpenWithProgids").GetValueNames() -notcontains 'TyporaCopilot.Markdown') { throw 'Missing Open with registration' }

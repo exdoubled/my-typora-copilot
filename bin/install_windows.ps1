@@ -33,7 +33,7 @@ try {
     $bin = Join-Path $root 'bin'
     $null = Assert-CopilotLocalPath $bin
     $null = New-Item -ItemType Directory -Path $bin -Force
-    foreach ($name in @('windows-common.ps1', 'launch_windows.ps1', 'repair_windows.ps1', 'uninstall_windows.ps1')) {
+    foreach ($name in @('windows-common.ps1', 'windows-shortcut.cs', 'launch_windows.ps1', 'repair_windows.ps1', 'uninstall_windows.ps1')) {
         Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination $bin -Force
     }
     $config = @{ typoraPath = $typoraPath } | ConvertTo-Json

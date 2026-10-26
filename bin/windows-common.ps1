@@ -131,12 +131,10 @@ function Register-CopilotLauncher([string] $Root, [string] $TyporaPath) {
     $launcher = Join-Path $Root 'bin\launch_windows.ps1'
     $arguments = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ' + (ConvertTo-CopilotArgument $launcher)
     $null = New-Item -ItemType Directory -Path (Split-Path $shellPaths.Shortcut -Parent) -Force
-    $shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut($shellPaths.Shortcut)
-    $shortcut.TargetPath = $powershell
-    $shortcut.Arguments = $arguments
-    $shortcut.IconLocation = (Join-Path $TyporaPath 'Typora.exe') + ',0'
-    $shortcut.Description = 'Check and restore Copilot before opening Typora'
-    $shortcut.Save()
+    if (-not ('TyporaCopilot.Shortcut' -as [type])) {
+        Add-Type -LiteralPath (Join-Path $PSScriptRoot 'windows-shortcut.cs')
+    }
+    [TyporaCopilot.Shortcut]::Save($shellPaths.Shortcut, $powershell, $arguments, (Join-Path $TyporaPath 'Typora.exe'))
 
     $progId = Join-Path $shellPaths.Classes 'TyporaCopilot.Markdown'
     $null = New-Item -Path "$progId\shell\open\command" -Force
