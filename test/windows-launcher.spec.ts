@@ -7,6 +7,7 @@ import {
   mkdtempSync,
   readFileSync,
   readdirSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -78,7 +79,7 @@ describe("Windows persistent launcher", { timeout: 30_000 }, () => {
 
   beforeEach((context) => {
     if (process.platform !== "win32") context.skip();
-    temporary = mkdtempSync(path.join(tmpdir(), "typora-launcher-test-"));
+    temporary = realpathSync.native(mkdtempSync(path.join(tmpdir(), "typora-launcher-test-")));
     directory = path.join(temporary, "中文 & $tag [x] #100%");
     registry = `HKCU:\\Software\\TyporaCopilot.Tests\\${randomUUID()}`;
     typora = path.join(directory, "Typora");
