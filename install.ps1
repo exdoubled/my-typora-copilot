@@ -1,4 +1,3 @@
-#Requires -RunAsAdministrator
 $ErrorActionPreference = 'Stop'
 $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
 $workDir = [IO.Path]::GetFullPath((Join-Path $tempRoot "typora-copilot-$([Guid]::NewGuid())"))
@@ -11,8 +10,6 @@ try {
     Expand-Archive -LiteralPath $archive -DestinationPath $releaseDir
     Push-Location -LiteralPath $releaseDir
     try {
-        Write-Host "Trying to uninstall the previous version (if any)..."
-        .\bin\uninstall_windows.ps1 -Silent
         Write-Host "Trying to install the new version..."
         .\bin\install_windows.ps1
     }
