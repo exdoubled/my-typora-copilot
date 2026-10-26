@@ -1,16 +1,28 @@
 #Requires -RunAsAdministrator
-$latestRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/Snowflyt/typora-copilot/releases/latest"
-Invoke-WebRequest -Uri $latestRelease.assets[0].browser_download_url -OutFile "typora-copilot-$($latestRelease.tag_name).zip"
-If (Test-Path "typora-copilot-$($latestRelease.tag_name)") {
-    Remove-Item "typora-copilot-$($latestRelease.tag_name)" -Recurse -Force
+$ErrorActionPreference = 'Stop'
+$tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
+$workDir = [IO.Path]::GetFullPath((Join-Path $tempRoot "typora-copilot-$([Guid]::NewGuid())"))
+New-Item -ItemType Directory -Path $workDir | Out-Null
+try {
+    $latestRelease = Invoke-RestMethod -Uri "https://api.github.com/repos/exdoubled/my-typora-copilot/releases/latest"
+    $archive = Join-Path $workDir 'release.zip'
+    $releaseDir = Join-Path $workDir 'release'
+    Invoke-WebRequest -Uri $latestRelease.assets[0].browser_download_url -OutFile $archive
+    Expand-Archive -LiteralPath $archive -DestinationPath $releaseDir
+    Push-Location -LiteralPath $releaseDir
+    try {
+        Write-Host "Trying to uninstall the previous version (if any)..."
+        .\bin\uninstall_windows.ps1 -Silent
+        Write-Host "Trying to install the new version..."
+        .\bin\install_windows.ps1
+    }
+    finally {
+        Pop-Location
+    }
 }
-New-Item -ItemType Directory -Path "typora-copilot-$($latestRelease.tag_name)"
-Expand-Archive -Path "typora-copilot-$($latestRelease.tag_name).zip" -DestinationPath "typora-copilot-$($latestRelease.tag_name)"
-Remove-Item "typora-copilot-$($latestRelease.tag_name).zip"
-Set-Location "typora-copilot-$($latestRelease.tag_name)"
-Write-Host "Trying to uninstall the previous version (if any)..."
-.\bin\uninstall_windows.ps1 -Silent
-Write-Host "Trying to install the new version..."
-.\bin\install_windows.ps1
-Set-Location ..
-Remove-Item "typora-copilot-$($latestRelease.tag_name)" -Recurse -Force
+finally {
+    if ($workDir.StartsWith($tempRoot, [StringComparison]::OrdinalIgnoreCase) -and
+        (Split-Path -Leaf $workDir) -like 'typora-copilot-*') {
+        Remove-Item -LiteralPath $workDir -Recurse -Force
+    }
+}

@@ -1,6 +1,8 @@
 import { CommandError, NoFreePortError, PlatformError } from "@/errors";
 import type { ReadonlyRecord } from "@/types/tools";
 
+import { quoteShellArg } from "./shell";
+
 /**
  * Run a command from shell and return its output.
  * @param command Command to run.
@@ -42,6 +44,29 @@ export const runCommand = (() => {
 
   throw new PlatformError("Unsupported platform for `runCommand`");
 })();
+
+/**
+ * Run an executable without interpreting its path or arguments as shell syntax.
+ * @param executable The executable path.
+ * @param args Literal arguments.
+ * @returns The standard output.
+ */
+export const runExecutable = async (
+  executable: string,
+  args: readonly string[],
+): Promise<string> => {
+  if (Files.isNode) {
+    const { execFile } = window.reqnode!("child_process");
+    return new Promise((resolve, reject) => {
+      execFile(executable, [...args], (error, stdout, stderr) => {
+        if (error) reject(new CommandError(error.message));
+        else if (stderr) reject(new CommandError(stderr));
+        else resolve(stdout);
+      });
+    });
+  }
+  return await runCommand([executable, ...args].map(quoteShellArg).join(" "));
+};
 
 /**
  * Get the environment variables.

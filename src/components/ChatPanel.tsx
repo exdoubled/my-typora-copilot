@@ -1,6 +1,7 @@
 import type { Signal } from "@preact/signals";
 import { useSignal, useSignalEffect } from "@preact/signals";
 import { getLuminance } from "color2k";
+import purify from "dompurify";
 import hljs from "highlight.js";
 import { marked } from "marked";
 import { markedHighlight } from "marked-highlight";
@@ -495,7 +496,13 @@ const MessageContent: FC<MessageContentProps> = ({ content }) => {
   useEffect(() => {
     if (!containerRef.current) return;
 
-    containerRef.current.innerHTML = md.parse(content) as string;
+    containerRef.current.innerHTML = purify.sanitize(md.parse(content) as string, {
+      USE_PROFILES: { html: true },
+      FORBID_TAGS: ["style", "form", "input", "textarea", "button"],
+      FORBID_ATTR: ["style", "id", "name"],
+      ALLOW_DATA_ATTR: false,
+      ALLOWED_URI_REGEXP: /^(?:https?:|mailto:|#)/i,
+    });
 
     // Handle links
     const links = containerRef.current.querySelectorAll("a");

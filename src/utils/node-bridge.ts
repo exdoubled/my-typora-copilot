@@ -22,8 +22,9 @@ import semverValid from "semver/functions/valid";
 import { PLUGIN_DIR } from "@/constants";
 import { TYPORA_VERSION } from "@/typora-utils";
 
-import { findFreePort, getEnv, runCommand } from "./cli-tools";
+import { findFreePort, getEnv, runCommand, runExecutable } from "./cli-tools";
 import { cache } from "./function";
+import { quoteShellArg } from "./shell";
 
 export abstract class NodeServer {
   abstract readonly pid: number;
@@ -88,8 +89,9 @@ class MacOSNodeServer implements NodeServer {
   private constructor(
     public readonly pid: number,
     port: number,
+    token: string,
   ) {
-    this.wsClient = new WebSocket(`ws://localhost:${port}`);
+    this.wsClient = new WebSocket(`ws://127.0.0.1:${port}`, token);
     this.wsClient.onmessage = (event) => {
       this.listeners.forEach((listener) => listener(event.data as string));
     };
@@ -105,16 +107,24 @@ class MacOSNodeServer implements NodeServer {
 
   static async start(nodePath: string, modulePath: string): Promise<NodeServer> {
     const port = await findFreePort();
+    const token = Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) =>
+      byte.toString(16).padStart(2, "0"),
+    ).join("");
 
     const serverExecPath = path.join(PLUGIN_DIR, "mac-server.cjs");
     const logFileName = ".typora-copilot-lsp-sever-output.log";
-    const command = `nohup ${nodePath} '${serverExecPath}' ${port} '${modulePath}' > ~/${logFileName} 2>&1 &`;
+    const command = `umask 077; nohup ${quoteShellArg(nodePath)} ${quoteShellArg(serverExecPath)} ${port} ${quoteShellArg(modulePath)} ${quoteShellArg(token)} > ~/${logFileName} 2>&1 &`;
     void runCommand(command);
 
     const pid = await MacOSNodeServer.getPortPID(port);
     if (pid === -1) throw new Error("Failed to start Node LSP server");
 
-    return new MacOSNodeServer(pid, port);
+    const client = new MacOSNodeServer(pid, port, token);
+    await new Promise<void>((resolve, reject) => {
+      client.wsClient.onopen = () => resolve();
+      client.wsClient.onerror = () => reject(new Error("Failed to connect to Node LSP server"));
+    });
+    return client;
   }
 
   private static getPortPID(port: number): Promise<number> {
@@ -303,7 +313,7 @@ export const detectAvailableNodeRuntimes = async ({
       : (await lookPathFirst("brew")) || (await lookAppFirst("linuxbrew", "brew"));
     if (!brewPath) return null;
 
-    const cellarDir = (await runCommand(`"${brewPath}" --cellar`)).trim();
+    const cellarDir = (await runExecutable(brewPath, ["--cellar"])).trim();
     const cellarDirs = await readDir(cellarDir, "dirsOnly");
 
     return { cellarDir, cellarDirs };
@@ -354,7 +364,7 @@ export const detectAvailableNodeRuntimes = async ({
         const { portPath } = macPorts;
 
         const output = await runCommand(
-          `"${portPath}" info installed | grep --color=never ^nodejs`,
+          `${quoteShellArg(portPath)} info installed | grep --color=never ^nodejs`,
         );
 
         const nodePaths = await Promise.all(
@@ -363,7 +373,9 @@ export const detectAvailableNodeRuntimes = async ({
             .split("\n")
             .map((line) => line.trim().split(" ", 2)[0]!)
             .map((name) =>
-              runCommand(`"${portPath}" contents ${name} | head -n 2 | tail -n 1`)
+              runCommand(
+                `${quoteShellArg(portPath)} contents ${quoteShellArg(name)} | head -n 2 | tail -n 1`,
+              )
                 .then((path) => path.trim())
                 .catch(() => null),
             ),
@@ -411,7 +423,7 @@ export const detectAvailableNodeRuntimes = async ({
         // detected by the common directories lookup.
         if (!nvmPath) return [];
 
-        const nvmRoot = (await runCommand(`"${nvmPath}" root`))
+        const nvmRoot = (await runExecutable(nvmPath, ["root"]))
           .trim()
           .replace(/^Current Root:/i, "")
           .trim();
@@ -513,7 +525,9 @@ export const detectAvailableNodeRuntimes = async ({
             if (!macPorts) return null;
             const { portPath } = macPorts;
             const output = (
-              await runCommand(`"${portPath}" contents fnm | head -n 2 | tail -n 1`).catch(() => "")
+              await runCommand(
+                `${quoteShellArg(portPath)} contents fnm | head -n 2 | tail -n 1`,
+              ).catch(() => "")
             ).trim();
             if (!output || output.startsWith("Error:")) return null;
             return output;
@@ -529,7 +543,7 @@ export const detectAvailableNodeRuntimes = async ({
       if (!fnmPath) return [];
 
       const fnmDirEnvRegEx = /^(?:export\s+)?FNM_DIR=(?:['"])?(.+?)(?:['"])?$/;
-      const fnmDir = (await runCommand(`"${fnmPath}" env --shell bash`))
+      const fnmDir = (await runExecutable(fnmPath, ["env", "--shell", "bash"]))
         .trim()
         .split("\n")
         .map((line) => line.trim())
@@ -570,7 +584,7 @@ export const detectAvailableNodeRuntimes = async ({
     : null;
 
   const resolveRuntime = (path: string) =>
-    runCommand(`"${path}" -v`)
+    runExecutable(path, ["-v"])
       .then((version) => ({ path, version: version.trim() }))
       .catch(() => null);
 
