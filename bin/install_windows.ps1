@@ -1,102 +1,54 @@
-# Allow custom path (-Path or -p)
 param (
-    [Parameter(Mandatory = $false)]
     [Alias('p')]
     [string] $Path = ''
 )
 
-# Possible Typora installation paths
-$paths = @(
-    'C:\Program Files\Typora'
-    'C:\Program Files (x86)\Typora'
-    "$env:LOCALAPPDATA\Programs\Typora"
-)
-if ($Path -ne '') { $paths = @($Path) }
-
-$scriptToInsertAfterCandidates = @(
-    '<script src="./app/window/frame.js" defer="defer"></script>'
-    '<script src="./appsrc/window/frame.js" defer="defer"></script>'
-)
-$scriptToInsert = '<script src="./copilot/index.js" defer="defer"></script>'
-
-# Find `window.html` in Typora installation path
-$pathFound = $false
-$success = $false
-
-foreach ($path in $paths) {
-    $windowHtmlPathCandiates = @(
-        Join-Path -Path $path -ChildPath 'resources\app\window.html'
-        Join-Path -Path $path -ChildPath 'resources\appsrc\window.html'
-        Join-Path -Path $path -ChildPath 'resources\window.html'
-    )
-
-    foreach ($windowHtmlPath in $windowHtmlPathCandiates) {
-        # If found, insert script
-        if (Test-Path $windowHtmlPath) {
-            $pathFound = $true
-            Write-Host "Installation directory: ""$(Split-Path -Path $windowHtmlPath -Parent)\copilot\"""
-            Write-Host "Found Typora ""window.html"" at ""$windowHtmlPath""."
-            $content = Get-Content $windowHtmlPath -Raw -Encoding UTF8
-
-            if (!($content.Contains($scriptToInsert))) {
-                Write-Host 'Installing Copilot plugin in Typora...'
-                foreach ($scriptToInsertAfter in $scriptToInsertAfterCandidates) {
-                    if ($content.Contains($scriptToInsertAfter)) {
-                        Write-Host "Inserting Copilot plugin script after ""$scriptToInsertAfter""..."
-
-                        # Calculate indent of the script to insert
-                        $row = $content.Split("`n") | Where-Object { $_ -match $scriptToInsertAfter }
-                        $rowContentBeforeScriptToInsertAfter = $row -replace "$scriptToInsertAfter(.*)", ''
-                        $indent = $rowContentBeforeScriptToInsertAfter -replace $rowContentBeforeScriptToInsertAfter.TrimEnd(), ''
-
-                        # Insert script
-                        $newContent = $content -replace $scriptToInsertAfter, (
-                            $scriptToInsertAfter +
-                            $(If (($rowContentBeforeScriptToInsertAfter -ne '') -and ($indent -eq '')) { '' } Else { "`n" + $indent }) +
-                            $scriptToInsert
-                        )
-                        Set-Content -Path $windowHtmlPath -Value $newContent -Encoding UTF8
-
-                        # Copy `<cwd>\..\` to `<path_of_window_html>\copilot\` directory
-                        $copilotPath = Join-Path -Path (Split-Path -Path $windowHtmlPath -Parent) -ChildPath 'copilot'
-                        if (-not (Test-Path $copilotPath)) {
-                            Write-Host "Copying Copilot plugin files to ""$copilotPath""..."
-                            Copy-Item -Path (Join-Path -Path $PSScriptRoot -ChildPath '..\') -Destination $copilotPath -Recurse
-                        }
-
-                        Write-Host "Successfully installed Copilot plugin in Typora."
-
-                        $success = $true
-                        break
-                    }
-                }
-
-                if ($success) { break }
-            }
-            else {
-                # Script tag already present; validate installation integrity
-                $copilotPath = Join-Path -Path (Split-Path -Path $windowHtmlPath -Parent) -ChildPath 'copilot'
-                $indexJsPath = Join-Path -Path $copilotPath -ChildPath 'index.js'
-                if (-not (Test-Path $indexJsPath)) {
-                    Write-Warning "Corrupted Copilot installation detected. Expected ""$indexJsPath"" but it does not exist."
-                    Write-Host "Please delete the entire ""$copilotPath"" directory and re-run this installer."
-                    Write-Host "Do NOT place the release inside Typora's installation folder (especially not under ""copilot"")."
-                    Write-Host "Download/extract it to any other folder and run this script from there."
-                    break
-                }
-
-                Write-Warning "Copilot plugin has already been installed in Typora."
-                $success = $true
-                break
-            }
-        }
+. "$PSScriptRoot\windows-common.ps1"
+$typoraPath = Get-CopilotTyporaPath $Path
+$null = Get-CopilotWindow $typoraPath
+$source = Split-Path $PSScriptRoot -Parent
+$root = Assert-CopilotLocalPath (Get-CopilotHome)
+$plugin = Join-Path $root 'plugin'
+$previous = Join-Path $root 'plugin.previous'
+$stage = Join-Path $root "staging-$([Guid]::NewGuid())"
+foreach ($relative in @('index.js', 'mac-server.cjs', 'package.json', 'language-server\language-server.cjs')) {
+    if (-not (Test-Path -LiteralPath (Join-Path $source $relative) -PathType Leaf)) {
+        throw 'Install from an extracted release or the built dist directory.'
     }
 }
-
-# If not found, prompt user to check installation path
-if (-not $pathFound) {
-    Write-Error "Could not find Typora installation path. Please check if Typora is installed and try again."
+$null = New-Item -ItemType Directory -Path $stage -Force
+try {
+    foreach ($name in @('index.js', 'mac-server.cjs', 'package.json')) {
+        Copy-Item -LiteralPath (Join-Path $source $name) -Destination $stage
+    }
+    Copy-Item -LiteralPath (Join-Path $source 'language-server') -Destination $stage -Recurse
+    $null = Assert-CopilotLocalPath $plugin
+    Remove-CopilotDirectory $previous $root
+    if (Test-Path -LiteralPath $plugin) { Move-Item -LiteralPath $plugin -Destination $previous }
+    try { Move-Item -LiteralPath (Assert-CopilotLocalPath $stage) -Destination $plugin }
+    catch {
+        if (Test-Path -LiteralPath $previous) { Move-Item -LiteralPath $previous -Destination $plugin }
+        throw
+    }
+    $bin = Join-Path $root 'bin'
+    $null = Assert-CopilotLocalPath $bin
+    $null = New-Item -ItemType Directory -Path $bin -Force
+    foreach ($name in @('windows-common.ps1', 'windows-shortcut.cs', 'launch_windows.ps1', 'repair_windows.ps1', 'uninstall_windows.ps1')) {
+        Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination $bin -Force
+    }
+    $config = @{ typoraPath = $typoraPath } | ConvertTo-Json
+    [IO.File]::WriteAllText((Join-Path $root 'installation.json'), $config, (New-Object Text.UTF8Encoding $false))
+    Register-CopilotLauncher $root $typoraPath
+    try { $null = Repair-Copilot $typoraPath $plugin }
+    catch {
+        if (Test-CopilotAccessDenied $_) {
+            Write-Warning 'Open Typora with Copilot from the Start menu to approve the initial repair.'
+        }
+        else { throw }
+    }
+    Remove-CopilotDirectory $previous $root
+    Write-Host "Copilot is saved outside Typora at: $root"
+    Write-Host 'Open "Typora with Copilot" from the Start menu. You can also select it under Open with for .md files.'
+    Write-Host 'After updates, use this launcher to restore Copilot. Existing Typora windows must be restarted.'
 }
-elseif (-not $success) {
-    Write-Error "Installation failed."
-}
+finally { Remove-CopilotDirectory $stage $root }
