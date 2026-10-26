@@ -25,7 +25,7 @@ import {
   getWorkspaceFolder,
   waitUntilEditorInitialized,
 } from "./typora-utils";
-import { runCommand } from "./utils/cli-tools";
+import { runExecutable } from "./utils/cli-tools";
 import { computeTextChanges } from "./utils/diff";
 import { getCaretCoordinate } from "./utils/dom";
 import type { NodeRuntime } from "./utils/node-bridge";
@@ -58,7 +58,7 @@ Promise.defer(async () => {
     const customNodePath = settings.nodePath;
     const checkCustomRuntimePromise =
       customNodePath ?
-        runCommand(`"${customNodePath}" -v`).then((output) => {
+        runExecutable(customNodePath, ["-v"]).then((output) => {
           const version = output.trim();
           if (!semverValid(version)) {
             logger.warn(

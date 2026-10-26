@@ -11,7 +11,7 @@ import { t } from "@/i18n";
 import type { Settings } from "@/settings";
 import { settings } from "@/settings";
 import type { _Id } from "@/types/tools";
-import { runCommand } from "@/utils/cli-tools";
+import { runExecutable } from "@/utils/cli-tools";
 import type { NodeRuntime } from "@/utils/node-bridge";
 import {
   getAllAvailableNodeRuntimes,
@@ -141,7 +141,7 @@ const categories = {
                   const timestamp = Date.now();
                   latestTimestamp = timestamp;
 
-                  runCommand(`"${path}" -v`)
+                  runExecutable(path, ["-v"])
                     .then((output) => {
                       if (latestTimestamp !== timestamp) return;
                       const version = output.trim();

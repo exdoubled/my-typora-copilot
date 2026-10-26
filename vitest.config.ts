@@ -5,13 +5,13 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   resolve: {
     alias: {
-      "@modules": path.resolve(__dirname, "src/modules"),
-      "@": path.resolve(__dirname, "src"),
-      "@test": path.resolve(__dirname, "test"),
+      "@modules": path.resolve(import.meta.dirname, "src/modules"),
+      "@": path.resolve(import.meta.dirname, "src"),
+      "@test": path.resolve(import.meta.dirname, "test"),
     },
   },
   test: {
     setupFiles: ["./test/setup.ts"],
-    environment: "happy-dom",
+    environment: "jsdom",
   },
 });

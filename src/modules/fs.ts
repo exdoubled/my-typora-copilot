@@ -4,6 +4,7 @@ import { unique } from "radash";
 
 import { PlatformError } from "@/errors";
 import { getEnv, runCommand } from "@/utils/cli-tools";
+import { quoteShellArg } from "@/utils/shell";
 
 import * as path from "./path";
 
@@ -50,21 +51,21 @@ export const access: (path: string, mode?: number) => Promise<string | null> = (
       const command = (() => {
         switch (mode) {
           case constants.F_OK:
-            return `if [ -e "${path}" ]; then echo "${path}"; fi`;
+            return `if [ -e ${quoteShellArg(path)} ]; then echo ${quoteShellArg(path)}; fi`;
           case constants.R_OK:
-            return `if [ -r "${path}" ]; then echo "${path}"; fi`;
+            return `if [ -r ${quoteShellArg(path)} ]; then echo ${quoteShellArg(path)}; fi`;
           case constants.W_OK:
-            return `if [ -w "${path}" ]; then echo "${path}"; fi`;
+            return `if [ -w ${quoteShellArg(path)} ]; then echo ${quoteShellArg(path)}; fi`;
           case constants.X_OK:
-            return `if [ -x "${path}" ]; then echo "${path}"; fi`;
+            return `if [ -x ${quoteShellArg(path)} ]; then echo ${quoteShellArg(path)}; fi`;
           case constants.R_OK | constants.W_OK:
-            return `if [ -r "${path}" ] && [ -w "${path}" ]; then echo "${path}"; fi`;
+            return `if [ -r ${quoteShellArg(path)} ] && [ -w ${quoteShellArg(path)} ]; then echo ${quoteShellArg(path)}; fi`;
           case constants.R_OK | constants.X_OK:
-            return `if [ -r "${path}" ] && [ -x "${path}" ]; then echo "${path}"; fi`;
+            return `if [ -r ${quoteShellArg(path)} ] && [ -x ${quoteShellArg(path)} ]; then echo ${quoteShellArg(path)}; fi`;
           case constants.W_OK | constants.X_OK:
-            return `if [ -w "${path}" ] && [ -x "${path}" ]; then echo "${path}"; fi`;
+            return `if [ -w ${quoteShellArg(path)} ] && [ -x ${quoteShellArg(path)} ]; then echo ${quoteShellArg(path)}; fi`;
           case constants.R_OK | constants.W_OK | constants.X_OK:
-            return `if [ -r "${path}" ] && [ -w "${path}" ] && [ -x "${path}" ]; then echo "${path}"; fi`;
+            return `if [ -r ${quoteShellArg(path)} ] && [ -w ${quoteShellArg(path)} ] && [ -x ${quoteShellArg(path)} ]; then echo ${quoteShellArg(path)}; fi`;
           default:
             throw new Error(`Invalid mode for \`access\`: ${mode}`);
         }
@@ -111,21 +112,21 @@ export const accessFile: (path: string, mode?: number) => Promise<string | null>
       const command = (() => {
         switch (mode) {
           case constants.F_OK:
-            return `if [ -f "${path}" ]; then echo "${path}"; fi`;
+            return `if [ -f ${quoteShellArg(path)} ]; then echo ${quoteShellArg(path)}; fi`;
           case constants.R_OK:
-            return `if [ -f "${path}" ] && [ -r "${path}" ]; then echo "${path}"; fi`;
+            return `if [ -f ${quoteShellArg(path)} ] && [ -r ${quoteShellArg(path)} ]; then echo ${quoteShellArg(path)}; fi`;
           case constants.W_OK:
-            return `if [ -f "${path}" ] && [ -w "${path}" ]; then echo "${path}"; fi`;
+            return `if [ -f ${quoteShellArg(path)} ] && [ -w ${quoteShellArg(path)} ]; then echo ${quoteShellArg(path)}; fi`;
           case constants.X_OK:
-            return `if [ -f "${path}" ] && [ -x "${path}" ]; then echo "${path}"; fi`;
+            return `if [ -f ${quoteShellArg(path)} ] && [ -x ${quoteShellArg(path)} ]; then echo ${quoteShellArg(path)}; fi`;
           case constants.R_OK | constants.W_OK:
-            return `if [ -f "${path}" ] && [ -r "${path}" ] && [ -w "${path}" ]; then echo "${path}"; fi`;
+            return `if [ -f ${quoteShellArg(path)} ] && [ -r ${quoteShellArg(path)} ] && [ -w ${quoteShellArg(path)} ]; then echo ${quoteShellArg(path)}; fi`;
           case constants.R_OK | constants.X_OK:
-            return `if [ -f "${path}" ] && [ -r "${path}" ] && [ -x "${path}" ]; then echo "${path}"; fi`;
+            return `if [ -f ${quoteShellArg(path)} ] && [ -r ${quoteShellArg(path)} ] && [ -x ${quoteShellArg(path)} ]; then echo ${quoteShellArg(path)}; fi`;
           case constants.W_OK | constants.X_OK:
-            return `if [ -f "${path}" ] && [ -w "${path}" ] && [ -x "${path}" ]; then echo "${path}"; fi`;
+            return `if [ -f ${quoteShellArg(path)} ] && [ -w ${quoteShellArg(path)} ] && [ -x ${quoteShellArg(path)} ]; then echo ${quoteShellArg(path)}; fi`;
           case constants.R_OK | constants.W_OK | constants.X_OK:
-            return `if [ -f "${path}" ] && [ -r "${path}" ] && [ -w "${path}" ] && [ -x "${path}" ]; then echo "${path}"; fi`;
+            return `if [ -f ${quoteShellArg(path)} ] && [ -r ${quoteShellArg(path)} ] && [ -w ${quoteShellArg(path)} ] && [ -x ${quoteShellArg(path)} ]; then echo ${quoteShellArg(path)}; fi`;
           default:
             throw new Error(`Invalid mode for \`accessFile\`: ${mode}`);
         }
@@ -172,21 +173,21 @@ export const accessDir: (path: string, mode?: number) => Promise<string | null> 
       const command = (() => {
         switch (mode) {
           case constants.F_OK:
-            return `if [ -d "${path}" ]; then echo "${path}"; fi`;
+            return `if [ -d ${quoteShellArg(path)} ]; then echo ${quoteShellArg(path)}; fi`;
           case constants.R_OK:
-            return `if [ -d "${path}" ] && [ -r "${path}" ]; then echo "${path}"; fi`;
+            return `if [ -d ${quoteShellArg(path)} ] && [ -r ${quoteShellArg(path)} ]; then echo ${quoteShellArg(path)}; fi`;
           case constants.W_OK:
-            return `if [ -d "${path}" ] && [ -w "${path}" ]; then echo "${path}"; fi`;
+            return `if [ -d ${quoteShellArg(path)} ] && [ -w ${quoteShellArg(path)} ]; then echo ${quoteShellArg(path)}; fi`;
           case constants.X_OK:
-            return `if [ -d "${path}" ] && [ -x "${path}" ]; then echo "${path}"; fi`;
+            return `if [ -d ${quoteShellArg(path)} ] && [ -x ${quoteShellArg(path)} ]; then echo ${quoteShellArg(path)}; fi`;
           case constants.R_OK | constants.W_OK:
-            return `if [ -d "${path}" ] && [ -r "${path}" ] && [ -w "${path}" ]; then echo "${path}"; fi`;
+            return `if [ -d ${quoteShellArg(path)} ] && [ -r ${quoteShellArg(path)} ] && [ -w ${quoteShellArg(path)} ]; then echo ${quoteShellArg(path)}; fi`;
           case constants.R_OK | constants.X_OK:
-            return `if [ -d "${path}" ] && [ -r "${path}" ] && [ -x "${path}" ]; then echo "${path}"; fi`;
+            return `if [ -d ${quoteShellArg(path)} ] && [ -r ${quoteShellArg(path)} ] && [ -x ${quoteShellArg(path)} ]; then echo ${quoteShellArg(path)}; fi`;
           case constants.W_OK | constants.X_OK:
-            return `if [ -d "${path}" ] && [ -w "${path}" ] && [ -x "${path}" ]; then echo "${path}"; fi`;
+            return `if [ -d ${quoteShellArg(path)} ] && [ -w ${quoteShellArg(path)} ] && [ -x ${quoteShellArg(path)} ]; then echo ${quoteShellArg(path)}; fi`;
           case constants.R_OK | constants.W_OK | constants.X_OK:
-            return `if [ -d "${path}" ] && [ -r "${path}" ] && [ -w "${path}" ] && [ -x "${path}" ]; then echo "${path}"; fi`;
+            return `if [ -d ${quoteShellArg(path)} ] && [ -r ${quoteShellArg(path)} ] && [ -w ${quoteShellArg(path)} ] && [ -x ${quoteShellArg(path)} ]; then echo ${quoteShellArg(path)}; fi`;
           default:
             throw new Error(`Invalid mode for \`accessDir\`: ${mode}`);
         }
@@ -285,7 +286,7 @@ export const realpath: (path: string) => Promise<string | null> = (() => {
 
   if (Files.isMac)
     return async function realpath(path) {
-      return (await runCommand(`realpath "${path}"`).catch(() => "")).trim() || null;
+      return (await runCommand(`realpath ${quoteShellArg(path)}`).catch(() => "")).trim() || null;
     };
 
   throw new PlatformError("Unsupported platform for `realpath`");
@@ -334,7 +335,7 @@ const _checkExecutableFilePaths: (
         addCommonExts ? paths.flatMap((path) => COMMON_EXEC_EXTS.map((ext) => path + ext)) : paths;
 
       let script = "for path in";
-      for (const path of processedPaths) script += ` "${path}"`;
+      for (const path of processedPaths) script += ` ${quoteShellArg(path)}`;
       script += "; do\n";
       script += '  if [ -f "$path" ] && [ -x "$path" ]; then\n';
       script += '    echo "$path"\n';
@@ -407,8 +408,8 @@ export const readDir: (
     return async function readDir(dir, strategy = "all") {
       if (strategy === "all") {
         const output = await runCommand(/* sh */ `
-          for file in "${dir}"/* "${dir}"/.[!.]* "${dir}"/..?*; do
-            echo $(basename "$file")
+          for file in ${quoteShellArg(dir)}/* ${quoteShellArg(dir)}/.[!.]* ${quoteShellArg(dir)}/..?*; do
+            basename "$file"
           done
         `);
         return output.trim().split("\n");
@@ -416,9 +417,9 @@ export const readDir: (
 
       if (strategy === "dirsOnly") {
         const output = await runCommand(/* sh */ `
-          for file in "${dir}"/* "${dir}"/.[!.]* "${dir}"/..?*; do
+          for file in ${quoteShellArg(dir)}/* ${quoteShellArg(dir)}/.[!.]* ${quoteShellArg(dir)}/..?*; do
             if [ -d "$file" ]; then
-              echo $(basename "$file")
+              basename "$file"
             fi
           done
         `);
@@ -426,9 +427,9 @@ export const readDir: (
       }
 
       const output = await runCommand(/* sh */ `
-        for file in "${dir}"/* "${dir}"/.[!.]* "${dir}"/..?*; do
+        for file in ${quoteShellArg(dir)}/* ${quoteShellArg(dir)}/.[!.]* ${quoteShellArg(dir)}/..?*; do
           if [ -f "$file" ]; then
-            echo $(basename "$file")
+            basename "$file"
           fi
         done
       `);
@@ -464,7 +465,10 @@ export const mkdir: (
 
   if (Files.isMac || Files.isLinux) {
     return async function mkdir(path, options = {}) {
-      const cmd = options.recursive ? `mkdir -p "${path}"` : `[ -d "${path}" ] || mkdir "${path}"`;
+      const cmd =
+        options.recursive ?
+          `mkdir -p ${quoteShellArg(path)}`
+        : `[ -d ${quoteShellArg(path)} ] || mkdir ${quoteShellArg(path)}`;
       await runCommand(cmd);
     };
   }
@@ -521,19 +525,14 @@ export const writeFile: (path: string, data: string) => Promise<void> = (() => {
 
   if (Files.isMac || Files.isLinux) {
     return async function writeFile(path, data) {
-      // Create a temporary file with the content
-      // eslint-disable-next-line sonarjs/pseudo-random
-      const tempFile = `/tmp/typora_tmp_${Date.now()}_${Math.random().toString(36).substring(2, 15)}.txt`;
+      const tempFile = (await runCommand("mktemp /tmp/typora-copilot.XXXXXXXXXX")).trim();
 
       try {
-        // Write content to temp file first (safer approach to avoid data loss)
-        await runCommand(`cat > "${tempFile}" << 'TYPORA_EOF'\n${data}\nTYPORA_EOF`);
+        await runCommand(`printf '%s' ${quoteShellArg(data)} > ${quoteShellArg(tempFile)}`);
 
-        // Move temp file to destination (atomic operation)
-        await runCommand(`mv "${tempFile}" "${path}"`);
+        await runCommand(`mv -f -- ${quoteShellArg(tempFile)} ${quoteShellArg(path)}`);
       } catch (error) {
-        // Clean up temp file if it exists
-        await runCommand(`rm -f "${tempFile}"`).catch(() => {});
+        await runCommand(`rm -f -- ${quoteShellArg(tempFile)}`).catch(() => {});
         throw error;
       }
     };
@@ -563,7 +562,7 @@ export const rmFile: (path: string) => Promise<void> = (() => {
 
   if (Files.isMac || Files.isLinux) {
     return async function rmFile(path) {
-      await runCommand(`rm -f "${path}"`);
+      await runCommand(`rm -f -- ${quoteShellArg(path)}`);
     };
   }
 
